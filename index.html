@@ -1,1 +1,381 @@
+HTML
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Proposições - Câmara Municipal de Ubatã</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;750&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+    <div class="max-w-7xl mx-auto px-4 py-8 w-full">
+        <!-- Cabeçalho -->
+        <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-20 h-20 bg-slate-900 rounded-xl flex items-center justify-center p-2 shadow-inner overflow-hidden border border-slate-300">
+                    <img src="https://images.unsplash.com/photo-1541872703-74c5e44368f9?q=80&w=200&auto=format&fit=crop" alt="Logo Câmara" class="w-full h-full object-cover rounded-lg" id="camara-logo">
+                </div>
+                <div>
+                    <span class="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full mb-1">Poder Legislativo</span>
+                    <h1 class="text-2xl font-bold text-slate-900">Controle de Proposições</h1>
+                    <p class="text-sm text-slate-500">Câmara Municipal de Ubatã - BA</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                <button onclick="exportarDados()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition shadow-sm flex items-center gap-2">
+                    📥 Exportar Dados (CSV)
+                </button>
+            </div>
+        </header>
 
+        <!-- Grade Principal -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulário de Cadastro -->
+            <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-fit sticky top-6">
+                <h2 class="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+                    ✍️ Cadastrar Proposição
+                </h2>
+                <form id="formProposicao" onsubmit="salvarProposicao(event)" class="space-y-4">
+                    <input type="hidden" id="editId" value="">
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Responsável pelo Registro</label>
+                        <input type="text" id="responsavel" value="Ana" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tipo de Documento</label>
+                        <select id="tipo" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            <option value="Requerimento">Requerimento</option>
+                            <option value="Indicação">Indicação</option>
+                            <option value="Pedido de Providência">Pedido de Providência</option>
+                            <option value="Moção">Moção</option>
+                            <option value="Projeto de Lei">Projeto de Lei</option>
+                            <option value="Pareceres">Pareceres</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Número / Ano</label>
+                            <input type="text" id="numero" placeholder="Ex: 012/2026" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Data</label>
+                            <input type="date" id="data" required onchange="calcularSemestre()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Semestre Legislativo (Automático)</label>
+                        <input type="text" id="semestre" readonly class="w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 font-medium cursor-not-allowed">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Autor(es) - Segure Ctrl para mais de um</label>
+                        <select id="autores" multiple required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition h-36">
+                            <option value="Todos os Vereadores">👥 Todos os Vereadores (Bancada/Coletivo)</option>
+                            <option value="Gabriel Nascif (Presidente)">Gabriel Nascif (Presidente)</option>
+                            <option value="Carlos Renan de Souza">Carlos Renan de Souza</option>
+                            <option value="Davidson Muniz">Davidson Muniz</option>
+                            <option value="Diêgo Tavares">Diêgo Tavares</option>
+                            <option value="Erisvaldo Alexandrino">Erisvaldo Alexandrino</option>
+                            <option value="Ítalo Bispo">Ítalo Bispo</option>
+                            <option value="Juliano de Oliveira">Juliano de Oliveira</option>
+                            <option value="Manoel Bonfim">Manoel Bonfim</option>
+                            <option value="Márcio Oliveira">Márcio Oliveira</option>
+                            <option value="Paulo Silva">Paulo Silva</option>
+                            <option value="Roberto Miranda">Roberto Miranda</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Assunto / Resumo</label>
+                        <textarea id="assunto" rows="3" placeholder="Descreva o objeto da proposição..." required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Palavras-Chave (separadas por vírgula)</label>
+                        <input type="text" id="palavrasChave" placeholder="Ex: iluminação, calçamento, saúde" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="submit" id="btnSalvar" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm mt-2">
+                            💾 Salvar Proposição
+                        </button>
+                        <button type="button" id="btnCancelar" onclick="cancelarEdicao()" class="hidden px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition shadow-sm mt-2">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Área de Pesquisa e Listagem -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Filtros e Alerta -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        🔍 Pesquisar e Verificar Duplicidade
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Buscar por Palavra-Chave / Termo</label>
+                            <input type="text" id="filtroBusca" onkeyup="filtrarProposicoes()" placeholder="Ex: ponte, água, tapa-buraco..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filtrar por Semestre</label>
+                            <select id="filtroSemestre" onchange="filtrarProposicoes()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                                <option value="">Todos os Semestres</option>
+                                <option value="1º Semestre">1º Semestre</option>
+                                <option value="2º Semestre">2º Semestre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Caixa de Alerta de Conflito -->
+                    <div id="alertaDuplicidade" class="hidden mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-start gap-3">
+                        <span class="text-xl">⚠️</span>
+                        <div>
+                            <strong class="font-semibold block mb-0.5">Atenção: Possível Duplicidade Detectada!</strong>
+                            <p id="mensagemAlerta">Existe uma proposição semelhante cadastrada neste semestre.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Registros -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-slate-900">Proposições Cadastradas</h2>
+                        <span id="contadorRegistros" class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">0 registros</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
+                                    <th class="p-4">Tipo / Nº</th>
+                                    <th class="p-4">Data / Semestre</th>
+                                    <th class="p-4">Autor(es)</th>
+                                    <th class="p-4">Assunto / Registro</th>
+                                    <th class="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaProposicoes" class="divide-y divide-slate-100 text-sm">
+                                <!-- Dados injetados via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé Institucional -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+        <p>Criado em 2026 — Ana Paula Rodrigues — Câmara Municipal de Ubatã</p>
+    </footer>
+
+    <script>
+        let proposicoes = JSON.parse(localStorage.getItem('proposicoes_camara')) || [];
+
+        function calcularSemestre() {
+            const dataInput = document.getElementById('data').value;
+            if (!dataInput) return;
+            const data = new Date(dataInput + 'T00:00:00');
+            const mes = data.getMonth() + 1;
+            const ano = data.getFullYear();
+            const semestre = mes <= 6 ? '1º Semestre' : '2º Semestre';
+            document.getElementById('semestre').value = `${semestre} de ${ano}`;
+        }
+
+        document.getElementById('data').valueAsDate = new Date();
+        calcularSemestre();
+
+        function salvarProposicao(event) {
+            event.preventDefault();
+            
+            const editId = document.getElementById('editId').value;
+            const selectAutores = document.getElementById('autores');
+            const autoresSelecionados = Array.from(selectAutores.selectedOptions).map(option => option.value);
+
+            if (autoresSelecionados.length === 0) {
+                alert('Selecione pelo menos um autor.');
+                return;
+            }
+
+            if (editId) {
+                proposicoes = proposicoes.map(p => {
+                    if (p.id == editId) {
+                        return {
+                            ...p,
+                            responsavel: document.getElementById('responsavel').value,
+                            tipo: document.getElementById('tipo').value,
+                            numero: document.getElementById('numero').value,
+                            data: document.getElementById('data').value,
+                            semestre: document.getElementById('semestre').value,
+                            autores: autoresSelecionados,
+                            assunto: document.getElementById('assunto').value,
+                            palavrasChave: document.getElementById('palavrasChave').value.toLowerCase()
+                        };
+                    }
+                    return p;
+                });
+                alert('Proposição atualizada com sucesso!');
+            } else {
+                const nova = {
+                    id: Date.now(),
+                    responsavel: document.getElementById('responsavel').value,
+                    tipo: document.getElementById('tipo').value,
+                    numero: document.getElementById('numero').value,
+                    data: document.getElementById('data').value,
+                    semestre: document.getElementById('semestre').value,
+                    autores: autoresSelecionados,
+                    assunto: document.getElementById('assunto').value,
+                    palavrasChave: document.getElementById('palavrasChave').value.toLowerCase()
+                };
+                proposicoes.unshift(nova);
+                alert('Proposição cadastrada com sucesso!');
+            }
+
+            localStorage.setItem('proposicoes_camara', JSON.stringify(proposicoes));
+            cancelarEdicao();
+            renderizarTabela();
+        }
+
+        function editarProposicao(id) {
+            const p = proposicoes.find(item => item.id === id);
+            if (!p) return;
+
+            document.getElementById('editId').value = p.id;
+            document.getElementById('responsavel').value = p.responsavel || 'Ana';
+            document.getElementById('tipo').value = p.tipo;
+            document.getElementById('numero').value = p.numero;
+            document.getElementById('data').value = p.data;
+            calcularSemestre();
+            document.getElementById('assunto').value = p.assunto;
+            document.getElementById('palavrasChave').value = p.palavrasChave;
+
+            const selectAutores = document.getElementById('autores');
+            Array.from(selectAutores.options).forEach(option => {
+                option.selected = p.autores.includes(option.value);
+            });
+
+            document.getElementById('btnSalvar').innerText = '💾 Atualizar Proposição';
+            document.getElementById('btnSalvar').className = 'flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
+            document.getElementById('btnCancelar').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicao() {
+            document.getElementById('formProposicao').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('data').valueAsDate = new Date();
+            calcularSemestre();
+            document.getElementById('btnSalvar').innerText = '💾 Salvar Proposição';
+            document.getElementById('btnSalvar').className = 'flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
+            document.getElementById('btnCancelar').classList.add('hidden');
+        }
+
+        function excluirProposicao(id) {
+            if (confirm('Deseja realmente excluir esta proposição?')) {
+                proposicoes = proposicoes.filter(p => p.id !== id);
+                localStorage.setItem('proposicoes_camara', JSON.stringify(proposicoes));
+                renderizarTabela();
+            }
+        }
+
+        function exportarDados() {
+            if (proposicoes.length === 0) {
+                alert('Não há dados cadastrados para exportar.');
+                return;
+            }
+            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,Autores,Assunto,PalavrasChave\n';
+            proposicoes.forEach(p => {
+                const listaAutoresStr = Array.isArray(p.autores) ? p.autores.join('; ') : p.autor;
+                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavrasChave}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'proposicoes_camara.csv';
+            a.click();
+        }
+
+        function renderizarTabela(dadosFiltrados = proposicoes) {
+            const tbody = document.getElementById('listaProposicoes');
+            tbody.innerHTML = '';
+            document.getElementById('contadorRegistros').innerText = `${dadosFiltrados.length} registro(s)`;
+
+            if (dadosFiltrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Nenhuma proposição encontrada.</td></tr>`;
+                return;
+            }
+
+            dadosFiltrados.forEach(p => {
+                let autoresFormatados = '';
+                if (p.autores && Array.isArray(p.autores)) {
+                    autoresFormatados = p.autores.join(', ');
+                } else if (p.autor) {
+                    autoresFormatados = p.autor;
+                }
+
+                const resp = p.responsavel || 'Ana';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-semibold text-slate-900">
+                        <span class="inline-block px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded mb-1">${p.tipo}</span><br>
+                        ${p.numero}
+                    </td>
+                    <td class="p-4 text-slate-600 text-xs">
+                        ${p.data.split('-').reverse().join('/')}<br>
+                        <span class="font-medium text-slate-700">${p.semestre}</span>
+                    </td>
+                    <td class="p-4 text-slate-700 font-medium">${autoresFormatados}</td>
+                    <td class="p-4 text-slate-600">
+                        <p class="text-sm mb-1">${p.assunto}</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">🔑 ${p.palavrasChave}</span>
+                            <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">👤 Cadastrado por: ${resp}</span>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right space-x-1">
+                        <button onclick="editarProposicao(${p.id})" class="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-1 bg-blue-50 rounded-lg transition">Editar</button>
+                        <button onclick="excluirProposicao(${p.id})" class="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 rounded-lg transition">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarProposicoes() {
+            const termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
+            const semestreFiltro = document.getElementById('filtroSemestre').value;
+
+            const filtradas = proposicoes.filter(p => {
+                const matchTermo = !termo || p.palavrasChave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo);
+                const matchSemestre = !semestreFiltro || p.semestre.includes(semestreFiltro);
+                return matchTermo && matchSemestre;
+            });
+
+            const alerta = document.getElementById('alertaDuplicidade');
+            if (termo && filtradas.length > 0) {
+                alerta.classList.remove('hidden');
+                document.getElementById('mensagemAlerta').innerText = `Encontrada(s) ${filtradas.length} proposição(ões) relacionada(s) a "${termo}". Verifique se já existe pedido idêntico no semestre para evitar duplicidade!`;
+            } else {
+                alerta.classList.add('hidden');
+            }
+
+            renderizarTabela(filtradas);
+        }
+
+        renderizarTabela();
+    </script>
+</body>
+</html>
