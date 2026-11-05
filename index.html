@@ -76,6 +76,11 @@ HTML
                     </div>
 
                     <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sessão Plenária de Aprovação</label>
+                        <input type="text" id="sessao" placeholder="Ex: 14ª Sessão Ordinária" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                    </div>
+
+                    <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Autor(es) - Segure Ctrl para mais de um</label>
                         <select id="autores" multiple required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition h-36">
                             <option value="Todos os Vereadores">👥 Todos os Vereadores (Bancada/Coletivo)</option>
@@ -159,7 +164,7 @@ HTML
                                     <th class="p-4">Tipo / Nº</th>
                                     <th class="p-4">Data / Semestre</th>
                                     <th class="p-4">Autor(es)</th>
-                                    <th class="p-4">Assunto / Registro</th>
+                                    <th class="p-4">Assunto / Sessão / Registro</th>
                                     <th class="p-4 text-right">Ações</th>
                                 </tr>
                             </thead>
@@ -216,6 +221,7 @@ HTML
                             numero: document.getElementById('numero').value,
                             data: document.getElementById('data').value,
                             semestre: document.getElementById('semestre').value,
+                            sessao: document.getElementById('sessao').value,
                             autores: autoresSelecionados,
                             assunto: document.getElementById('assunto').value,
                             palavrasChave: document.getElementById('palavrasChave').value.toLowerCase()
@@ -232,6 +238,7 @@ HTML
                     numero: document.getElementById('numero').value,
                     data: document.getElementById('data').value,
                     semestre: document.getElementById('semestre').value,
+                    sessao: document.getElementById('sessao').value,
                     autores: autoresSelecionados,
                     assunto: document.getElementById('assunto').value,
                     palavrasChave: document.getElementById('palavrasChave').value.toLowerCase()
@@ -255,6 +262,7 @@ HTML
             document.getElementById('numero').value = p.numero;
             document.getElementById('data').value = p.data;
             calcularSemestre();
+            document.getElementById('sessao').value = p.sessao || '';
             document.getElementById('assunto').value = p.assunto;
             document.getElementById('palavrasChave').value = p.palavrasChave;
 
@@ -293,10 +301,10 @@ HTML
                 alert('Não há dados cadastrados para exportar.');
                 return;
             }
-            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,Autores,Assunto,PalavrasChave\n';
+            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,Sessao,Autores,Assunto,PalavrasChave\n';
             proposicoes.forEach(p => {
                 const listaAutoresStr = Array.isArray(p.autores) ? p.autores.join('; ') : p.autor;
-                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavrasChave}"\n`;
+                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${p.sessao || ''}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavrasChave}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -325,6 +333,7 @@ HTML
                 }
 
                 const resp = p.responsavel || 'Ana';
+                const sessaoText = p.sessao ? `🏛️ ${p.sessao}` : '';
 
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition';
@@ -341,8 +350,9 @@ HTML
                     <td class="p-4 text-slate-600">
                         <p class="text-sm mb-1">${p.assunto}</p>
                         <div class="flex flex-wrap gap-2 mt-2">
+                            ${sessaoText ? `<span class="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-medium">${sessaoText}</span>` : ''}
                             <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">🔑 ${p.palavrasChave}</span>
-                            <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">👤 Cadastrado por: ${resp}</span>
+                            <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">👤 ${resp}</span>
                         </div>
                     </td>
                     <td class="p-4 text-right space-x-1">
@@ -359,7 +369,7 @@ HTML
             const semestreFiltro = document.getElementById('filtroSemestre').value;
 
             const filtradas = proposicoes.filter(p => {
-                const matchTermo = !termo || p.palavrasChave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo);
+                const matchTermo = !termo || p.palavrasChave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo) || (p.sessao && p.sessao.toLowerCase().includes(termo));
                 const matchSemestre = !semestreFiltro || p.semestre.includes(semestreFiltro);
                 return matchTermo && matchSemestre;
             });
