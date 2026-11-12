@@ -11,7 +11,7 @@ HTML
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // CONFIGURAÇÃO DO FIREBASE (Gerada automaticamente para o seu projeto)
+        // CONFIGURAÇÃO DO FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyAq-hbq1z2QdOoShG6jtilfhUqdOivThWI",
             authDomain: "controle-proposicoes-ubata.firebaseapp.com",
@@ -40,7 +40,6 @@ HTML
         document.getElementById('data').valueAsDate = new Date();
         calcularSemestre();
 
-        // Carregar dados do Firebase
         async function carregarProposicoes() {
             try {
                 const querySnapshot = await getDocs(collection(db, "proposicoes"));
@@ -215,18 +214,66 @@ HTML
             const termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
             const semestreFiltro = document.getElementById('filtroSemestre').value;
 
+            // Filtro principal para a tabela
             const filtradas = proposicoes.filter(p => {
                 const matchTermo = !termo || p.palavras_chave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo);
                 const matchSemestre = !semestreFiltro || p.semestre.includes(semestreFiltro);
                 return matchTermo && matchSemestre;
             });
 
-            const alerta = document.getElementById('alertaDuplicidade');
-            if (termo && filtradas.length > 0) {
-                alerta.classList.remove('hidden');
-                document.getElementById('mensagemAlerta').innerText = `Encontrada(s) ${filtradas.length} proposição(ões) relacionada(s) a "${termo}". Verifique se já existe pedido idêntico no semestre para evitar duplicidade!`;
+            // Lógica de Alertas Detalhados (Duplicidade no semestre / Semestre anterior)
+            const alertaDuplicidade = document.getElementById('alertaDuplicidade');
+            const mensagemAlerta = document.getElementById('mensagemAlerta');
+            const alertaAnterior = document.getElementById('alertaAnterior');
+            const mensagemAnterior = document.getElementById('mensagemAnterior');
+
+            if (termo && termo.length > 1) {
+                // Descobrir qual semestre está selecionado no filtro ou o semestre atual do formulário
+                const semestreAtualInput = document.getElementById('semestre').value;
+                const semestreAtivo = semestreFiltro || semestreAtualInput;
+
+                // Buscar correspondências que contenham o termo
+                const matchesTermo = proposicoes.filter(p => 
+                    p.palavras_chave.includes(termo) || 
+                    p.assunto.toLowerCase().includes(termo) || 
+                    p.numero.toLowerCase().includes(termo)
+                );
+
+                // Separar o que é do mesmo semestre e o que é de semestres anteriores
+                const doMesmoSemestre = matchesTermo.filter(p => p.semestre === semestreAtivo);
+                const deSemestresAnteriores = matchesTermo.filter(p => p.semestre !== semestreAtivo);
+
+                // 1. Alerta Laranja: Possível Duplicidade no Semestre Atual
+                if (doMesmoSemestre.length > 0) {
+                    alertaDuplicidade.classList.remove('hidden');
+                    let detalhes = doMesmoSemestre.map(p => {
+                        let aut = Array.isArray(p.autores) ? p.autores.join(', ') : p.autores;
+                        let dataFmt = p.data ? p.data.split('-').reverse().join('/') : '';
+                        return `• ${p.tipo} ${p.numero} - ${aut} - Data: ${dataFmt}`;
+                    }).join('<br>');
+
+                    mensagemAlerta.innerHTML = `Encontrada(s) <strong>${doMesmoSemestre.length}</strong> proposição(ões) relacionada(s) a "<strong>${termo}</strong>" neste semestre:<br>${detalhes}`;
+                } else {
+                    alertaDuplicidade.classList.add('hidden');
+                }
+
+                // 2. Alerta Azul: Proposição em Semestre Anterior
+                if (deSemestresAnteriores.length > 0) {
+                    alertaAnterior.classList.remove('hidden');
+                    let detalhesAnt = deSemestresAnteriores.map(p => {
+                        let aut = Array.isArray(p.autores) ? p.autores.join(', ') : p.autores;
+                        let dataFmt = p.data ? p.data.split('-').reverse().join('/') : '';
+                        return `• ${p.tipo} ${p.numero} (${p.semestre}) - ${aut} - Data: ${dataFmt}`;
+                    }).join('<br>');
+
+                    mensagemAnterior.innerHTML = `Encontrada(s) em semestre anterior (aviso cordial):<br>${detalhesAnt}`;
+                } else {
+                    alertaAnterior.classList.add('hidden');
+                }
+
             } else {
-                alerta.classList.add('hidden');
+                alertaDuplicidade.classList.add('hidden');
+                alertaAnterior.classList.add('hidden');
             }
 
             renderizarTabela(filtradas);
@@ -361,12 +408,21 @@ HTML
                         </div>
                     </div>
 
-                    <!-- Caixa de Alerta de Conflito -->
-                    <div id="alertaDuplicidade" class="hidden mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-start gap-3">
+                    <!-- Caixa de Alerta de Conflito (Laranja - Mesmo Semestre) -->
+                    <div id="alertaDuplicidade" class="hidden mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm flex items-start gap-3">
                         <span class="text-xl">⚠️</span>
                         <div>
-                            <strong class="font-semibold block mb-0.5">Atenção: Possível Duplicidade Detectada!</strong>
+                            <strong class="font-semibold block mb-0.5">Atenção: Possível Duplicidade Detectada no Semestre!</strong>
                             <p id="mensagemAlerta">Existe uma proposição semelhante cadastrada neste semestre.</p>
+                        </div>
+                    </div>
+
+                    <!-- Caixa de Aviso Cordial (Azul - Semestre Anterior) -->
+                    <div id="alertaAnterior" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-sm flex items-start gap-3">
+                        <span class="text-xl">ℹ️</span>
+                        <div>
+                            <strong class="font-semibold block mb-0.5">Aviso Cordial (Semestre Anterior):</strong>
+                            <p id="mensagemAnterior">Proposição encontrada em semestre anterior.</p>
                         </div>
                     </div>
                 </div>
@@ -400,7 +456,7 @@ HTML
 
     <!-- Rodapé Institucional -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>Criado em 2026 — Sistema de Proposições — Câmara Municipal de Ubatã</p>
+        <p>Criado em 2026 — Ana Paula Rodrigues — Câmara Municipal de Ubatã</p>
     </footer>
 </body>
 </html>
