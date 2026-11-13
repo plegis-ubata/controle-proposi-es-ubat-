@@ -73,6 +73,7 @@ HTML
                 numero: document.getElementById('numero').value,
                 data: document.getElementById('data').value,
                 semestre: document.getElementById('semestre').value,
+                sessaoAprovacao: document.getElementById('sessaoAprovacao').value,
                 autores: autoresSelecionados,
                 assunto: document.getElementById('assunto').value,
                 palavras_chave: document.getElementById('palavrasChave').value.toLowerCase()
@@ -105,6 +106,7 @@ HTML
             document.getElementById('numero').value = p.numero;
             document.getElementById('data').value = p.data;
             calcularSemestre();
+            document.getElementById('sessaoAprovacao').value = p.sessaoAprovacao || '';
             document.getElementById('assunto').value = p.assunto;
             document.getElementById('palavrasChave').value = p.palavras_chave;
 
@@ -114,7 +116,7 @@ HTML
             });
 
             document.getElementById('btnSalvar').innerText = '💾 Atualizar Proposição';
-            document.getElementById('btnSalvar').className = 'flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
+            document.getElementById('btnSalvar').className = 'w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
             document.getElementById('btnCancelar').classList.remove('hidden');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -127,7 +129,7 @@ HTML
             document.getElementById('data').valueAsDate = new Date();
             calcularSemestre();
             document.getElementById('btnSalvar').innerText = '💾 Salvar Proposição';
-            document.getElementById('btnSalvar').className = 'flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
+            document.getElementById('btnSalvar').className = 'w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm mt-2';
             document.getElementById('btnCancelar').classList.add('hidden');
         }
         window.cancelarEdicao = cancelarEdicao;
@@ -148,10 +150,10 @@ HTML
                 alert('Não há dados cadastrados para exportar.');
                 return;
             }
-            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,Autores,Assunto,PalavrasChave\n';
+            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,SessaoAprovacao,Autores,Assunto,PalavrasChave\n';
             proposicoes.forEach(p => {
                 const listaAutoresStr = Array.isArray(p.autores) ? p.autores.join('; ') : p.autores;
-                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavras_chave}"\n`;
+                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${p.sessaoAprovacao || ''}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavras_chave}"\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -181,6 +183,7 @@ HTML
                 }
 
                 const resp = p.responsavel || 'Ana';
+                const sessaoInfo = p.sessaoAprovacao ? `<span class="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-medium">🏛️ ${p.sessaoAprovacao}</span>` : '';
 
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition';
@@ -198,7 +201,8 @@ HTML
                         <p class="text-sm mb-1">${p.assunto}</p>
                         <div class="flex flex-wrap gap-2 mt-2">
                             <span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">🔑 ${p.palavras_chave}</span>
-                            <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">👤 Cadastrado por: ${resp}</span>
+                            ${sessaoInfo}
+                            <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">👤 ${resp}</span>
                         </div>
                     </td>
                     <td class="p-4 text-right space-x-1">
@@ -213,43 +217,40 @@ HTML
         function filtrarProposicoes() {
             const termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
             const semestreFiltro = document.getElementById('filtroSemestre').value;
+            const tipoFiltro = document.getElementById('filtroTipo').value;
 
-            // Filtro principal para a tabela
             const filtradas = proposicoes.filter(p => {
                 const matchTermo = !termo || p.palavras_chave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo);
                 const matchSemestre = !semestreFiltro || p.semestre.includes(semestreFiltro);
-                return matchTermo && matchSemestre;
+                const matchTipo = !tipoFiltro || p.tipo === tipoFiltro;
+                return matchTermo && matchSemestre && matchTipo;
             });
 
-            // Lógica de Alertas Detalhados (Duplicidade no semestre / Semestre anterior)
             const alertaDuplicidade = document.getElementById('alertaDuplicidade');
             const mensagemAlerta = document.getElementById('mensagemAlerta');
             const alertaAnterior = document.getElementById('alertaAnterior');
             const mensagemAnterior = document.getElementById('mensagemAnterior');
 
             if (termo && termo.length > 1) {
-                // Descobrir qual semestre está selecionado no filtro ou o semestre atual do formulário
                 const semestreAtualInput = document.getElementById('semestre').value;
                 const semestreAtivo = semestreFiltro || semestreAtualInput;
 
-                // Buscar correspondências que contenham o termo
                 const matchesTermo = proposicoes.filter(p => 
                     p.palavras_chave.includes(termo) || 
                     p.assunto.toLowerCase().includes(termo) || 
                     p.numero.toLowerCase().includes(termo)
                 );
 
-                // Separar o que é do mesmo semestre e o que é de semestres anteriores
                 const doMesmoSemestre = matchesTermo.filter(p => p.semestre === semestreAtivo);
                 const deSemestresAnteriores = matchesTermo.filter(p => p.semestre !== semestreAtivo);
 
-                // 1. Alerta Laranja: Possível Duplicidade no Semestre Atual
                 if (doMesmoSemestre.length > 0) {
                     alertaDuplicidade.classList.remove('hidden');
                     let detalhes = doMesmoSemestre.map(p => {
                         let aut = Array.isArray(p.autores) ? p.autores.join(', ') : p.autores;
                         let dataFmt = p.data ? p.data.split('-').reverse().join('/') : '';
-                        return `• ${p.tipo} ${p.numero} - ${aut} - Data: ${dataFmt}`;
+                        let sessaoTxt = p.sessaoAprovacao ? ` - Aprovado na ${p.sessaoAprovacao}` : '';
+                        return `• ${p.tipo} ${p.numero} - ${aut}${sessaoTxt} - Data: ${dataFmt}`;
                     }).join('<br>');
 
                     mensagemAlerta.innerHTML = `Encontrada(s) <strong>${doMesmoSemestre.length}</strong> proposição(ões) relacionada(s) a "<strong>${termo}</strong>" neste semestre:<br>${detalhes}`;
@@ -257,16 +258,16 @@ HTML
                     alertaDuplicidade.classList.add('hidden');
                 }
 
-                // 2. Alerta Azul: Proposição em Semestre Anterior
                 if (deSemestresAnteriores.length > 0) {
                     alertaAnterior.classList.remove('hidden');
                     let detalhesAnt = deSemestresAnteriores.map(p => {
                         let aut = Array.isArray(p.autores) ? p.autores.join(', ') : p.autores;
                         let dataFmt = p.data ? p.data.split('-').reverse().join('/') : '';
-                        return `• ${p.tipo} ${p.numero} (${p.semestre}) - ${aut} - Data: ${dataFmt}`;
+                        let sessaoTxt = p.sessaoAprovacao ? ` - ${p.sessaoAprovacao}` : '';
+                        return `• ${p.tipo} ${p.numero} (${p.semestre}) - ${aut}${sessaoTxt} - Data: ${dataFmt}`;
                     }).join('<br>');
 
-                    mensagemAnterior.innerHTML = `Encontrada(s) em semestre anterior (aviso cordial):<br>${detalhesAnt}`;
+                    mensagemAnterior.innerHTML = `Proposição aprovada em semestre anterior:<br>${detalhesAnt}`;
                 } else {
                     alertaAnterior.classList.add('hidden');
                 }
@@ -305,104 +306,126 @@ HTML
         </header>
 
         <!-- Grade Principal -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Formulário de Cadastro -->
-            <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-fit sticky top-6">
-                <h2 class="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            <!-- BARRA LATERAL INDEPENDENTE (Formulário de Cadastro) -->
+            <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-6 max-h-[calc(100vh-120px)] flex flex-col">
+                <h2 class="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2 shrink-0">
                     ✍️ Cadastrar Proposição
                 </h2>
-                <form id="formProposicao" onsubmit="salvarProposicao(event)" class="space-y-4">
-                    <input type="hidden" id="editId" value="">
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Responsável pelo Registro</label>
-                        <input type="text" id="responsavel" value="Ana" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tipo de Documento</label>
-                        <select id="tipo" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
-                            <option value="Requerimento">Requerimento</option>
-                            <option value="Indicação">Indicação</option>
-                            <option value="Pedido de Providência">Pedido de Providência</option>
-                            <option value="Moção">Moção</option>
-                            <option value="Projeto de Lei">Projeto de Lei</option>
-                            <option value="Pareceres">Pareceres</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
+                
+                <!-- Conteúdo com rolagem independente -->
+                <div class="overflow-y-auto pr-1 space-y-4 flex-1">
+                    <form id="formProposicao" onsubmit="salvarProposicao(event)" class="space-y-4">
+                        <input type="hidden" id="editId" value="">
+                        
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Número / Ano</label>
-                            <input type="text" id="numero" placeholder="Ex: 012/2026" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Responsável pelo Registro</label>
+                            <input type="text" id="responsavel" value="Ana" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
                         </div>
+
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Data</label>
-                            <input type="date" id="data" required onchange="calcularSemestre()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tipo de Documento</label>
+                            <select id="tipo" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                                <option value="Requerimento">Requerimento</option>
+                                <option value="Indicação">Indicação</option>
+                                <option value="Pedido de Providência">Pedido de Providência</option>
+                                <option value="Moção">Moção</option>
+                                <option value="Projeto de Lei">Projeto de Lei</option>
+                                <option value="Pareceres">Pareceres</option>
+                            </select>
                         </div>
-                    </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Semestre Legislativo (Automático)</label>
-                        <input type="text" id="semestre" readonly class="w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 font-medium cursor-not-allowed">
-                    </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Número / Ano</label>
+                                <input type="text" id="numero" placeholder="Ex: 012/2026" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Data</label>
+                                <input type="date" id="data" required onchange="calcularSemestre()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            </div>
+                        </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Autor(es) - Segure Ctrl para mais de um</label>
-                        <select id="autores" multiple required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition h-36">
-                            <option value="Todos os Vereadores">👥 Todos os Vereadores (Bancada/Coletivo)</option>
-                            <option value="Gabriel Nascif (Presidente)">Gabriel Nascif (Presidente)</option>
-                            <option value="Carlos Renan de Souza">Carlos Renan de Souza</option>
-                            <option value="Davidson Muniz">Davidson Muniz</option>
-                            <option value="Diêgo Tavares">Diêgo Tavares</option>
-                            <option value="Erisvaldo Alexandrino">Erisvaldo Alexandrino</option>
-                            <option value="Ítalo Bispo">Ítalo Bispo</option>
-                            <option value="Juliano de Oliveira">Juliano de Oliveira</option>
-                            <option value="Manoel Bonfim">Manoel Bonfim</option>
-                            <option value="Márcio Oliveira">Márcio Oliveira</option>
-                            <option value="Paulo Silva">Paulo Silva</option>
-                            <option value="Roberto Miranda">Roberto Miranda</option>
-                            <option value="Comissão de Finanças, Orçamento e Compras">Comissão de Finanças, Orçamento e Compras</option>
-                            <option value="Comissão de Constituição e Justiça">Comissão de Constituição e Justiça</option>
-                            <option value="Comissão de Saúde">Comissão de Saúde</option>
-                            <option value="Comissão de Educação, Cultura, Esporte e Lazer">Comissão de Educação, Cultura, Esporte e Lazer</option>
-                            <option value="Comissão de Meio Ambiente, Comércio e Indústria">Comissão de Meio Ambiente, Comércio e Indústria</option>
-                            <option value="Comissão de Assistência Social e Necessidades Especiais">Comissão de Assistência Social e Necessidades Especiais</option>
-                        </select>
-                    </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Semestre Legislativo (Automático)</label>
+                            <input type="text" id="semestre" readonly class="w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 font-medium cursor-not-allowed">
+                        </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Assunto / Resumo</label>
-                        <textarea id="assunto" rows="3" placeholder="Descreva o objeto da proposição..." required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition"></textarea>
-                    </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sessão de Aprovação</label>
+                            <input type="text" id="sessaoAprovacao" placeholder="Ex: 12ª Sessão Ordinária" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Palavras-Chave (separadas por vírgula)</label>
-                        <input type="text" id="palavrasChave" placeholder="Ex: iluminação, calçamento, saúde" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
-                    </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Autor(es) - Segure Ctrl para mais de um</label>
+                            <select id="autores" multiple required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition h-32">
+                                <option value="Todos os Vereadores">👥 Todos os Vereadores (Bancada/Coletivo)</option>
+                                <option value="Gabriel Nascif (Presidente)">Gabriel Nascif (Presidente)</option>
+                                <option value="Carlos Renan de Souza">Carlos Renan de Souza</option>
+                                <option value="Davidson Muniz">Davidson Muniz</option>
+                                <option value="Diêgo Tavares">Diêgo Tavares</option>
+                                <option value="Erisvaldo Alexandrino">Erisvaldo Alexandrino</option>
+                                <option value="Ítalo Bispo">Ítalo Bispo</option>
+                                <option value="Juliano de Oliveira">Juliano de Oliveira</option>
+                                <option value="Manoel Bonfim">Manoel Bonfim</option>
+                                <option value="Márcio Oliveira">Márcio Oliveira</option>
+                                <option value="Paulo Silva">Paulo Silva</option>
+                                <option value="Roberto Miranda">Roberto Miranda</option>
+                                <option value="Comissão de Finanças">Comissão de Finanças</option>
+                                <option value="Comissão de Justiça e Redação">Comissão de Justiça e Redação</option>
+                                <option value="Comissão de Saúde">Comissão de Saúde</option>
+                                <option value="Comissão de Esporte e Lazer">Comissão de Esporte e Lazer</option>
+                                <option value="Comissão de Assistência Social e Necessidades Especiais">Comissão de Assistência Social e Necessidades Especiais</option>
+                                <option value="Comissão de Meio Ambiente">Comissão de Meio Ambiente</option>
+                            </select>
+                        </div>
 
-                    <div class="flex gap-2">
-                        <button type="submit" id="btnSalvar" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm mt-2">
-                            💾 Salvar Proposição
-                        </button>
-                        <button type="button" id="btnCancelar" onclick="cancelarEdicao()" class="hidden px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition shadow-sm mt-2">
-                            Cancelar
-                        </button>
-                    </div>
-                </form>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Assunto / Descrição do Documento</label>
+                            <textarea id="assunto" rows="3" placeholder="Descreva o objeto da proposição..." required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Palavras-Chave (separadas por vírgula)</label>
+                            <input type="text" id="palavrasChave" placeholder="Ex: iluminação, calçamento, saúde" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" id="btnSalvar" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-sm">
+                                💾 Salvar Proposição
+                            </button>
+                            <button type="button" id="btnCancelar" onclick="cancelarEdicao()" class="hidden w-full mt-2 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl transition shadow-sm">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <!-- Área de Pesquisa e Listagem -->
+            <!-- Área de Pesquisa e Listagem (Lado Direito) -->
             <div class="lg:col-span-2 space-y-6">
                 <!-- Filtros e Alerta -->
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                         🔍 Pesquisar e Verificar Duplicidade
                     </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Buscar por Palavra-Chave / Termo</label>
-                            <input type="text" id="filtroBusca" onkeyup="filtrarProposicoes()" placeholder="Ex: ponte, água, tapa-buraco..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Buscar por Termo</label>
+                            <input type="text" id="filtroBusca" onkeyup="filtrarProposicoes()" placeholder="Ex: ponte, água..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filtrar por Documento</label>
+                            <select id="filtroTipo" onchange="filtrarProposicoes()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                                <option value="">Todos os Tipos</option>
+                                <option value="Requerimento">Requerimento</option>
+                                <option value="Indicação">Indicação</option>
+                                <option value="Pedido de Providência">Pedido de Providência</option>
+                                <option value="Moção">Moção</option>
+                                <option value="Projeto de Lei">Projeto de Lei</option>
+                                <option value="Pareceres">Pareceres</option>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filtrar por Semestre</label>
@@ -462,7 +485,7 @@ HTML
 
     <!-- Rodapé Institucional -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>  - Poder Legislativo Municipal - Criado em 2026 - </p>
+        <p>Criado em 2026 — Poder Legislativo Municipal — Câmara Municipal de Ubatã</p>
     </footer>
 </body>
 </html>
