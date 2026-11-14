@@ -40,6 +40,13 @@ HTML
         document.getElementById('data').valueAsDate = new Date();
         calcularSemestre();
 
+        // Função auxiliar para extrair o número da sessão (ex: "11ª Sessão Ordinária" -> 11)
+        function extrairNumeroSessao(textoSessao) {
+            if (!textoSessao) return -1;
+            const match = textoSessao.match(/\d+/);
+            return match ? parseInt(match[0], 10) : -1;
+        }
+
         async function carregarProposicoes() {
             try {
                 const querySnapshot = await getDocs(collection(db, "proposicoes"));
@@ -47,7 +54,21 @@ HTML
                 querySnapshot.forEach((documento) => {
                     proposicoes.push({ firebaseId: documento.id, ...documento.data() });
                 });
-                proposicoes.sort((a, b) => b.id - a.id);
+
+                // Ordenação: Sessão maior (mais recente) no topo; desempate por data e ID
+                proposicoes.sort((a, b) => {
+                    const sessaoA = extrairNumeroSessao(a.sessaoAprovacao);
+                    const sessaoB = extrairNumeroSessao(b.sessaoAprovacao);
+
+                    if (sessaoB !== sessaoA) {
+                        return sessaoB - sessaoA;
+                    }
+                    if (b.data !== a.data) {
+                        return b.data.localeCompare(a.data);
+                    }
+                    return b.id - a.id;
+                });
+
                 renderizarTabela();
             } catch (error) {
                 console.error("Erro ao carregar do Firebase:", error);
@@ -485,7 +506,7 @@ HTML
 
     <!-- Rodapé Institucional -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>Criado em 2026 — Poder Legislativo Municipal — Câmara Municipal de Ubatã</p>
+        <p>Controle de Proposições - Criado em 2026 — Câmara Municipal de Ubatã</p>
     </footer>
 </body>
 </html>
