@@ -55,14 +55,30 @@ HTML
                     proposicoes.push({ firebaseId: documento.id, ...documento.data() });
                 });
 
-                // Ordenação: Sessão maior (mais recente) no topo; desempate por data e ID
+                // Ordenação cronológica e por sessões inteligente:
                 proposicoes.sort((a, b) => {
+                    // 1. Extrair Ano do campo "semestre" (ex: "1º Semestre de 2026" -> 2026)
+                    const anoA = a.semestre ? parseInt(a.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
+                    const anoB = b.semestre ? parseInt(b.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
+                    if (anoB !== anoA) {
+                        return anoB - anoA; // Ano mais recente no topo (ex: 2027 acima de 2026)
+                    }
+
+                    // 2. Extrair Semestre (1º ou 2º)
+                    const semA = a.semestre && a.semestre.includes('2º') ? 2 : 1;
+                    const semB = b.semestre && b.semestre.includes('2º') ? 2 : 1;
+                    if (semB !== semA) {
+                        return semB - semA; // 2º semestre acima do 1º semestre
+                    }
+
+                    // 3. Extrair Número da Sessão
                     const sessaoA = extrairNumeroSessao(a.sessaoAprovacao);
                     const sessaoB = extrairNumeroSessao(b.sessaoAprovacao);
-
                     if (sessaoB !== sessaoA) {
-                        return sessaoB - sessaoA;
+                        return sessaoB - sessaoA; // Sessão maior acima da menor dentro do mesmo semestre
                     }
+
+                    // 4. Desempate por data e ID do cadastro
                     if (b.data !== a.data) {
                         return b.data.localeCompare(a.data);
                     }
@@ -506,7 +522,7 @@ HTML
 
     <!-- Rodapé Institucional -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>Controle de Proposições - Criado em 2026 — Câmara Municipal de Ubatã</p>
+        <p>Controle de Proposições - Criado em 2026 - Setor Administrativo</p>
     </footer>
 </body>
 </html>
