@@ -61,21 +61,21 @@ HTML
                     const anoA = a.semestre ? parseInt(a.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
                     const anoB = b.semestre ? parseInt(b.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
                     if (anoB !== anoA) {
-                        return anoB - anoA; // Ano mais recente no topo (ex: 2027 acima de 2026)
+                        return anoB - anoA;
                     }
 
                     // 2. Extrair Semestre (1º ou 2º)
                     const semA = a.semestre && a.semestre.includes('2º') ? 2 : 1;
                     const semB = b.semestre && b.semestre.includes('2º') ? 2 : 1;
                     if (semB !== semA) {
-                        return semB - semA; // 2º semestre acima do 1º semestre
+                        return semB - semA;
                     }
 
                     // 3. Extrair Número da Sessão
                     const sessaoA = extrairNumeroSessao(a.sessaoAprovacao);
                     const sessaoB = extrairNumeroSessao(b.sessaoAprovacao);
                     if (sessaoB !== sessaoA) {
-                        return sessaoB - sessaoA; // Sessão maior acima da menor dentro do mesmo semestre
+                        return sessaoB - sessaoA;
                     }
 
                     // 4. Desempate por data e ID do cadastro
@@ -251,16 +251,30 @@ HTML
             });
         }
 
+        function correspondemAoVereador(p, vereadorFiltro) {
+            if (!vereadorFiltro) return true;
+            if (!p.autores) return false;
+
+            const listaAutores = Array.isArray(p.autores) ? p.autores : [String(p.autores)];
+            return listaAutores.some(autor =>
+                autor === vereadorFiltro ||
+                autor.includes(vereadorFiltro) ||
+                autor === 'Todos os Vereadores'
+            );
+        }
+
         function filtrarProposicoes() {
             const termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
             const semestreFiltro = document.getElementById('filtroSemestre').value;
             const tipoFiltro = document.getElementById('filtroTipo').value;
+            const vereadorFiltro = document.getElementById('filtroVereador').value;
 
             const filtradas = proposicoes.filter(p => {
                 const matchTermo = !termo || p.palavras_chave.includes(termo) || p.assunto.toLowerCase().includes(termo) || p.numero.toLowerCase().includes(termo);
                 const matchSemestre = !semestreFiltro || p.semestre.includes(semestreFiltro);
                 const matchTipo = !tipoFiltro || p.tipo === tipoFiltro;
-                return matchTermo && matchSemestre && matchTipo;
+                const matchVereador = correspondemAoVereador(p, vereadorFiltro);
+                return matchTermo && matchSemestre && matchTipo && matchVereador;
             });
 
             const alertaDuplicidade = document.getElementById('alertaDuplicidade');
@@ -409,12 +423,6 @@ HTML
                                 <option value="Márcio Oliveira">Márcio Oliveira</option>
                                 <option value="Paulo Silva">Paulo Silva</option>
                                 <option value="Roberto Miranda">Roberto Miranda</option>
-                                <option value="Comissão de Finanças">Comissão de Finanças</option>
-                                <option value="Comissão de Justiça e Redação">Comissão de Justiça e Redação</option>
-                                <option value="Comissão de Saúde">Comissão de Saúde</option>
-                                <option value="Comissão de Esporte e Lazer">Comissão de Esporte e Lazer</option>
-                                <option value="Comissão de Assistência Social e Necessidades Especiais">Comissão de Assistência Social e Necessidades Especiais</option>
-                                <option value="Comissão de Meio Ambiente">Comissão de Meio Ambiente</option>
                             </select>
                         </div>
 
@@ -447,7 +455,7 @@ HTML
                     <h2 class="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                         🔍 Pesquisar e Verificar Duplicidade
                     </h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Buscar por Termo</label>
                             <input type="text" id="filtroBusca" onkeyup="filtrarProposicoes()" placeholder="Ex: ponte, água..." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
@@ -462,6 +470,32 @@ HTML
                                 <option value="Moção">Moção</option>
                                 <option value="Projeto de Lei">Projeto de Lei</option>
                                 <option value="Pareceres">Pareceres</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filtrar por Vereador</label>
+                            <select id="filtroVereador" onchange="filtrarProposicoes()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                                <option value="">Todos os Vereadores</option>
+                                <option value="Todos os Vereadores">👥 Todos os Vereadores (Bancada/Coletivo)</option>
+                                <option value="Gabriel Nascif (Presidente)">Gabriel Nascif (Presidente)</option>
+                                <option value="Carlos Renan de Souza">Carlos Renan de Souza</option>
+                                <option value="Davidson Muniz">Davidson Muniz</option>
+                                <option value="Diêgo Tavares">Diêgo Tavares</option>
+                                <option value="Erisvaldo Alexandrino">Erisvaldo Alexandrino</option>
+                                <option value="Ítalo Bispo">Ítalo Bispo</option>
+                                <option value="Juliano de Oliveira">Juliano de Oliveira</option>
+                                <option value="Manoel Bonfim">Manoel Bonfim</option>
+                                <option value="Márcio Oliveira">Márcio Oliveira</option>
+                                <option value="Paulo Silva">Paulo Silva</option>
+                                <option value="Roberto Miranda">Roberto Miranda</option>
+                                <option value="Roberto Miranda">Roberto Miranda</option>
+                                <option value="Comissão de Finanças">Comissão de Finanças</option>
+                                <option value="Comissão de Justiça e Redação">Comissão de Justiça e Redação</option>
+                                <option value="Comissão de Saúde">Comissão de Saúde</option>
+                                <option value="Comissão de Esporte e Lazer">Comissão de Esporte e Lazer</option>
+                                <option value="Comissão de Assistência Social e Necessidades Especiais">Comissão de Assistência Social e Necessidades Especiais</option>
+                                <option value="Comissão de Meio Ambiente">Comissão de Meio Ambiente</option>
+                            </select>
                             </select>
                         </div>
                         <div>
@@ -522,7 +556,7 @@ HTML
 
     <!-- Rodapé Institucional -->
     <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>Controle de Proposições - Criado em 2026 - Uso Exclusivo da Secretaria Geral </p>
+        <p>Controle de Proposições - Criado em 2026 — Uso Exclusivo da Secretaria Geral</p>
     </footer>
 </body>
 </html>
