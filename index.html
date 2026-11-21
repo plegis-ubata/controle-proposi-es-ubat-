@@ -25,6 +25,7 @@ HTML
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         let proposicoes = [];
+        let proposicoesAtuaisNaTela = [];
 
         function calcularSemestre() {
             const dataInput = document.getElementById('data').value;
@@ -57,35 +58,31 @@ HTML
 
                 // Ordenação cronológica e por sessões inteligente:
                 proposicoes.sort((a, b) => {
-                    // 1. Extrair Ano do campo "semestre" (ex: "1º Semestre de 2026" -> 2026)
                     const anoA = a.semestre ? parseInt(a.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
                     const anoB = b.semestre ? parseInt(b.semestre.replace(/\D/g, '').slice(-4)) || 0 : 0;
                     if (anoB !== anoA) {
                         return anoB - anoA;
                     }
 
-                    // 2. Extrair Semestre (1º ou 2º)
                     const semA = a.semestre && a.semestre.includes('2º') ? 2 : 1;
                     const semB = b.semestre && b.semestre.includes('2º') ? 2 : 1;
                     if (semB !== semA) {
                         return semB - semA;
                     }
 
-                    // 3. Extrair Número da Sessão
                     const sessaoA = extrairNumeroSessao(a.sessaoAprovacao);
                     const sessaoB = extrairNumeroSessao(b.sessaoAprovacao);
                     if (sessaoB !== sessaoA) {
                         return sessaoB - sessaoA;
                     }
 
-                    // 4. Desempate por data e ID do cadastro
                     if (b.data !== a.data) {
                         return b.data.localeCompare(a.data);
                     }
                     return b.id - a.id;
                 });
 
-                renderizarTabela();
+                filtrarProposicoes();
             } catch (error) {
                 console.error("Erro ao carregar do Firebase:", error);
             }
@@ -182,26 +179,62 @@ HTML
         }
         window.excluirProposicao = excluirProposicao;
 
+        // Função auxiliar para limpar texto e quebras de linha para a planilha
+        function limparTextoCSV(texto) {
+            if (!texto) return '';
+            return String(texto).replace(/(\r\n|\n|\r)/gm, ' ').replace(/"/g, '""').trim();
+        }
+
         function exportarDados() {
-            if (proposicoes.length === 0) {
-                alert('Não há dados cadastrados para exportar.');
+            const listaParaExportar = proposicoesAtuaisNaTela;
+
+            if (listaParaExportar.length === 0) {
+                alert('Não há registros exibidos no filtro atual para exportar.');
                 return;
             }
-            let csv = 'Responsavel,Tipo,Numero,Data,Semestre,SessaoAprovacao,Autores,Assunto,PalavrasChave\n';
-            proposicoes.forEach(p => {
-                const listaAutoresStr = Array.isArray(p.autores) ? p.autores.join('; ') : p.autores;
-                csv += `"${p.responsavel || 'Ana'}","${p.tipo}","${p.numero}","${p.data}","${p.semestre}","${p.sessaoAprovacao || ''}","${listaAutoresStr}","${p.assunto.replace(/"/g, '""')}","${p.palavras_chave}"\n`;
+
+            // Cabeçalho separado por ponto e vírgula (padrão Excel Brasil)
+            let csv = 'Tipo de Documento;Número / Ano;Data;Semestre;Sessão de Aprovação;Autor(es);Assunto / Descrição;Palavras-Chave;Responsável\n';
+
+            listaParaExportar.forEach(p => {
+                const listaAutoresStr = Array.isArray(p.autores) ? p.autores.join(', ') : (p.autores || '');
+                const dataFormatada = p.data ? p.data.split('-').reverse().join('/') : '';
+
+                const linha = [
+                    `"${limparTextoCSV(p.tipo)}"`,
+                    `"${limparTextoCSV(p.numero)}"`,
+                    `"${dataFormatada}"`,
+                    `"${limparTextoCSV(p.semestre)}"`,
+                    `"${limparTextoCSV(p.sessaoAprovacao)}"`,
+                    `"${limparTextoCSV(listaAutoresStr)}"`,
+                    `"${limparTextoCSV(p.assunto)}"`,
+                    `"${limparTextoCSV(p.palavras_chave)}"`,
+                    `"${limparTextoCSV(p.responsavel || 'Ana')}"`
+                ].join(';');
+
+                csv += linha + '\n';
             });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+
+            // Adiciona BOM (\uFEFF) para o Excel reconhecer acentos e cedilha perfeitamente
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
+
+            // Nomeia o arquivo com o nome do vereador caso esteja filtrado
+            const vereadorFiltro = document.getElementById('filtroVereador').value;
+            const nomeArquivo = vereadorFiltro
+                ? `relatorio_${vereadorFiltro.toLowerCase().replace(/[^a-z0-9]/g, '_')}.csv`
+                : 'relatorio_proposicoes_camara.csv';
+
             a.href = url;
-            a.download = 'proposicoes_camara.csv';
+            a.download = nomeArquivo;
             a.click();
+            URL.revokeObjectURL(url);
         }
         window.exportarDados = exportarDados;
 
         function renderizarTabela(dadosFiltrados = proposicoes) {
+            proposicoesAtuaisNaTela = dadosFiltrados;
             const tbody = document.getElementById('listaProposicoes');
             tbody.innerHTML = '';
             document.getElementById('contadorRegistros').innerText = `${dadosFiltrados.length} registro(s)`;
